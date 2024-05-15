@@ -28,7 +28,7 @@ JITTER_AMOUNT = 0.1
 NUM_FIXATIONS_TRAIN = 10
 NUM_FIXATIONS_VAL = 5
 OUTPUT_DIR = 'retina_warps'
-COCO_DATASET_DIR = '.'
+COCO_DATASET_DIR = '/share/klab/datasets/ms_coco'
 RANDOM_SEED = 42
 
 # Set random seeds for reproducibility
