@@ -10,3 +10,4 @@ git+https://github.com/matthias-k/DeepGaze.git
 git+https://github.com/peterkeffer/retinawarp.git
 pysaliency
 h5py
+tqdm
