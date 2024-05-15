@@ -46,8 +46,8 @@ centerbias_file = 'centerbias_mit1003.npy'
 centerbias_template = np.load(centerbias_file)
 
 # Load the MS COCO dataset
-coco_train = COCO(os.path.join(COCO_DATASET_DIR, 'annotations', 'instances_train2017.json'))
-coco_val = COCO(os.path.join(COCO_DATASET_DIR, 'annotations', 'instances_val2017.json'))
+coco_train = COCO(os.path.join(COCO_DATASET_DIR, 'mscoco_annotations_trainval2017', 'instances_train2017.json'))
+coco_val = COCO(os.path.join(COCO_DATASET_DIR, 'mscoco_annotations_trainval2017', 'instances_val2017.json'))
 
 
 class FovealTransform(torch.nn.Module):
@@ -343,6 +343,7 @@ def rescale_centerbias(centerbias_template, height, width):
     """
     centerbias = zoom(centerbias_template, (height / centerbias_template.shape[0], width / centerbias_template.shape[1]), order=0, mode='nearest')
     centerbias -= logsumexp(centerbias)
+    assert centerbias.shape == (height, width), f"Centerbias shape {centerbias.shape} does not match image shape ({height}, {width})"
     return centerbias
 
 
@@ -353,6 +354,14 @@ def predict_fixation(model, image_tensor, centerbias_tensor, x_hist_tensor, y_hi
     log_density_prediction = model(image_tensor, centerbias_tensor, x_hist_tensor, y_hist_tensor)
     logD = log_density_prediction.detach().cpu().numpy()[0, 0]
     next_x, next_y = sample_from_logdensity(logD, rst=rst)
+
+    # Get the height and width of the image tensor
+    _, _, height, width = image_tensor.shape
+
+    # Check if the predicted fixation is within the image bounds
+    assert 0 <= next_x < width, f"Predicted fixation x-coordinate {next_x} is outside the image bounds (width: {width})"
+    assert 0 <= next_y < height, f"Predicted fixation y-coordinate {next_y} is outside the image bounds (height: {height})"
+
     return next_x, next_y
 
 
@@ -366,6 +375,7 @@ def generate_retina_warps(image, num_fixations, model):
 
     fixation_history_x = [width // 2]
     fixation_history_y = [height // 2]
+    normalized_fixation_history = [(0, 0)]  # Store normalized fixations
 
     rst = np.random.RandomState(seed=RANDOM_SEED)
 
@@ -390,6 +400,7 @@ def generate_retina_warps(image, num_fixations, model):
 
         fixation_history_x.append(next_x)
         fixation_history_y.append(next_y)
+        normalized_fixation_history.append((normalized_next_x, normalized_next_y))
 
         fixations = torch.tensor([[normalized_next_x, normalized_next_y]]).to(DEVICE)
 
@@ -430,15 +441,18 @@ def process_image(img_info, num_fixations, model, dataset_type):
     output_path = os.path.join(OUTPUT_DIR, f'{img_info["id"]}.h5')
     save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, output_path)
 
+
 def save_processed_ids(processed_ids, processed_ids_file):
     with open(processed_ids_file, 'w') as f:
         f.write(' '.join(map(str, processed_ids)))
+
 
 def load_processed_ids(processed_ids_file):
     if os.path.exists(processed_ids_file):
         with open(processed_ids_file, 'r') as f:
             return set(map(int, f.read().split()))
     return set()
+
 
 # Create the output directory if it doesn't exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
