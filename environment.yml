@@ -1,0 +1,21 @@
+name: retina_warps
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8
+  - numpy
+  - opencv
+  - pycocotools
+  - matplotlib
+  - scipy
+  - pytorch
+  - torchvision
+  - scikit-image
+  - pip
+  - pip:
+    - git+https://github.com/matthias-k/DeepGaze.git
+    - git+https://github.com/peterkeffer/retinawarp.git
+    - pysaliency
+    - h5py
