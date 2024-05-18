@@ -474,4 +474,4 @@ for img_file in tqdm(img_files, desc="Processing images"):
     process_image(img_path, NUM_FIXATIONS_TRAIN, model)
     processed_files.add(img_file)
     save_processed_files(processed_files, PROCESSED_FILES_FILE)
-    tqdm.write(f"Processed image: {img_file}")
+    # tqdm.write(f"Processed image: {img_file}")
