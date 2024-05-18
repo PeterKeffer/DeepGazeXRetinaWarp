@@ -82,7 +82,7 @@ def visualize_h5_data(h5_file, img_id, output_dir=None, plot=False, save_format=
             # Connect the fixations from retina warps with lines and circles
             prev_x, prev_y = None, None
             for i in range(num_warps):
-                color = (255, 165, 0) if i == 0 else (0, 0, 255)  # Orange for the first fixation, red for others
+                color = (0, 165, 255) if i == 0 else (0, 0, 255)  # Orange for the first fixation, red for others
                 warp_coordinates = retina_warps[i, :, :, 3:]  # Take the last 2 dimensions as coordinates
                 warp_coords = warp_coordinates[0, 0, :]  # Take the (0, 0, :) entry for coordinates
                 unnormalized_warp_coords = unnormalize_fixations([warp_coords], width, height)
