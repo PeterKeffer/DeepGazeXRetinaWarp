@@ -458,7 +458,7 @@ img_files = [f for f in os.listdir(COCO_DATASET_DIR) if f.lower().endswith('.jpg
 print("Number of images:", len(img_files))
 for img_file in tqdm(img_files, desc="Processing images"):
     if img_file in processed_files:
-        tqdm.write(f"Skipping already processed image: {img_file}")
+        # tqdm.write(f"Skipping already processed image: {img_file}")
         continue
     img_path = os.path.join(COCO_DATASET_DIR, img_file)
     process_image(img_path, NUM_FIXATIONS_TRAIN, model)
