@@ -306,12 +306,11 @@ class FovealTransform(torch.nn.Module):
 
         return scaled_image
 
-
 def normalize_fixations(fixations, width, height):
     normalized_fixations = []
     for x, y in fixations:
-        normalized_x = (x / width) * 2 - 1
-        normalized_y = (y / height) * 2 - 1
+        normalized_x = (x - width / 2) / (width / 2)
+        normalized_y = (y - height / 2) / (height / 2)
         normalized_fixations.append((normalized_x, normalized_y))
     return normalized_fixations
 
@@ -319,11 +318,10 @@ def normalize_fixations(fixations, width, height):
 def unnormalize_fixations(fixations, width, height):
     unnormalized_fixations = []
     for x, y in fixations:
-        unnormalized_x = ((x + 1) / 2) * width
-        unnormalized_y = ((y + 1) / 2) * height
+        unnormalized_x = (x * (width/2)) + (width/2)
+        unnormalized_y = (y * (height/2)) + (height/2)
         unnormalized_fixations.append((unnormalized_x, unnormalized_y))
     return unnormalized_fixations
-
 
 def get_fixation_history(fixation_coordinates, model):
     """
@@ -396,8 +394,12 @@ def generate_retina_warps(image, num_fixations, model):
         y_hist_tensor = torch.tensor([y_hist]).to(DEVICE)
         next_x, next_y = predict_fixation(model, image_tensor, centerbias_tensor, x_hist_tensor, y_hist_tensor, rst)
 
+        print(f"Next fixation: ({next_x}, {next_y})")
+
         normalized_next_fixation = normalize_fixations([(next_x, next_y)], width, height)
         normalized_next_x, normalized_next_y = normalized_next_fixation[0]
+
+        print(f"Normalized fixation: ({normalized_next_x}, {normalized_next_y})")
 
         fixation_history_x.append(next_x)
         fixation_history_y.append(next_y)
