@@ -28,6 +28,7 @@ JITTER_AMOUNT = 0.1
 NUM_FIXATIONS_TRAIN = 10
 NUM_FIXATIONS_VAL = 5
 OUTPUT_DIR = 'retina_warps'
+OUTPUT_FILE = 'retina_warps.h5'
 COCO_DATASET_DIR = '/share/klab/datasets/ms_coco'
 RANDOM_SEED = 42
 
@@ -411,12 +412,13 @@ def generate_retina_warps(image, num_fixations, model):
     return image, retina_warps, fixation_history_x, fixation_history_y
 
 
-def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, output_path):
-    with h5py.File(output_path, 'w') as f:
-        f.create_dataset('original_image', data=original_image)
-        f.create_dataset('retina_warps', data=np.array(retina_warps))
-        f.create_dataset('fixation_history_x', data=np.array(fixation_history_x))
-        f.create_dataset('fixation_history_y', data=np.array(fixation_history_y))
+def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, output_path, img_id):
+    with h5py.File(output_path, 'a') as f:  # 'a' mode for appending data
+        grp = f.create_group(str(img_id))
+        grp.create_dataset('original_image', data=original_image)
+        grp.create_dataset('retina_warps', data=np.array(retina_warps))
+        grp.create_dataset('fixation_history_x', data=np.array(fixation_history_x))
+        grp.create_dataset('fixation_history_y', data=np.array(fixation_history_y))
 
 
 def process_image(img_info, num_fixations, model, dataset_type):
@@ -438,8 +440,8 @@ def process_image(img_info, num_fixations, model, dataset_type):
 
     original_image, retina_warps, fixation_history_x, fixation_history_y = generate_retina_warps(image, num_fixations, model)
 
-    output_path = os.path.join(OUTPUT_DIR, f'{img_info["id"]}.h5')
-    save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, output_path)
+    output_path = os.path.join(OUTPUT_DIR, OUTPUT_FILE)
+    save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, output_path, img_info["id"])
 
 
 def save_processed_ids(processed_ids, processed_ids_file):
