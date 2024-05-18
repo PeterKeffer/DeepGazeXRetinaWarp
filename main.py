@@ -394,12 +394,12 @@ def generate_retina_warps(image, num_fixations, model):
         y_hist_tensor = torch.tensor([y_hist]).to(DEVICE)
         next_x, next_y = predict_fixation(model, image_tensor, centerbias_tensor, x_hist_tensor, y_hist_tensor, rst)
 
-        print(f"Next fixation: ({next_x}, {next_y})")
+        # print(f"Next fixation: ({next_x}, {next_y})")
 
         normalized_next_fixation = normalize_fixations([(next_x, next_y)], width, height)
         normalized_next_x, normalized_next_y = normalized_next_fixation[0]
 
-        print(f"Normalized fixation: ({normalized_next_x}, {normalized_next_y})")
+        # print(f"Normalized fixation: ({normalized_next_x}, {normalized_next_y})")
 
         fixation_history_x.append(next_x)
         fixation_history_y.append(next_y)
