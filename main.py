@@ -31,6 +31,7 @@ OUTPUT_DIR = 'retina_warps'
 OUTPUT_FILE = 'retina_warps.h5'
 COCO_DATASET_DIR = '/share/klab/datasets/avs/input/NSD_scenes_MEG_size_adjusted_925'
 RANDOM_SEED = 42
+INCLUDE_INITIAL_FIXATION = True # Flag to control whether to include the initial fixation at the center point
 
 # Set random seeds for reproducibility
 np.random.seed(RANDOM_SEED)
@@ -387,6 +388,13 @@ def generate_retina_warps(image, num_fixations, model):
                                        random_seed=RANDOM_SEED)
 
     retina_warps = []
+
+    if INCLUDE_INITIAL_FIXATION:
+        # Initial fixation at the center point (0, 0)
+        initial_fixation = torch.tensor([[0.0, 0.0]]).to(DEVICE)
+        initial_retina_img = foveal_transform(image_tensor.float(), initial_fixation)[0].permute(1, 2, 0).cpu().numpy()
+        retina_warps.append(initial_retina_img)
+
     for _ in range(num_fixations - 1):
         x_hist = get_fixation_history(fixation_history_x, model)
         y_hist = get_fixation_history(fixation_history_y, model)
