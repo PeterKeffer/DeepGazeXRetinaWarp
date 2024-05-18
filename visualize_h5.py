@@ -7,6 +7,14 @@ import random
 import argparse
 
 
+def unnormalize_fixations(fixations, width, height):
+    unnormalized_fixations = []
+    for x, y in fixations:
+        unnormalized_x = (x * (width / 2)) + (width / 2)
+        unnormalized_y = (y * (height / 2)) + (height / 2)
+        unnormalized_fixations.append((unnormalized_x, unnormalized_y))
+    return unnormalized_fixations
+
 def visualize_h5_data(h5_file, img_id, output_dir=None, plot=False, save_format='jpg'):
     with h5py.File(h5_file, 'r') as f:
         grp = f[img_id]
@@ -18,18 +26,29 @@ def visualize_h5_data(h5_file, img_id, output_dir=None, plot=False, save_format=
         height, width = original_image.shape[:2]
         num_warps = len(retina_warps)
 
+        # Unnormalize fixation history
+        fixation_history = list(zip(fixation_history_x, fixation_history_y))
+        unnormalized_fixations = unnormalize_fixations(fixation_history, width, height)
+        unnormalized_fixation_history_x, unnormalized_fixation_history_y = zip(*unnormalized_fixations)
+
         if plot:
             fig, axes = plt.subplots(1, num_warps + 1, figsize=(20, 5))
             axes[0].imshow(original_image)
-            axes[0].plot(fixation_history_x, fixation_history_y, 'ro-', markersize=5)
+            axes[0].plot(unnormalized_fixation_history_x, unnormalized_fixation_history_y, 'ro-', markersize=5)
             axes[0].set_title('Original Image with Fixations')
             axes[0].axis('off')
 
             for i in range(num_warps):
                 warp_image = retina_warps[i, :, :, :3]  # Take only the first 3 dimensions as the image
                 warp_coordinates = retina_warps[i, :, :, 3:]  # Take the last 2 dimensions as coordinates
+
+                # Unnormalize warp coordinates
+                warp_coords = warp_coordinates.reshape(-1, 2)
+                unnormalized_warp_coords = unnormalize_fixations(warp_coords, width, height)
+                unnormalized_warp_x, unnormalized_warp_y = zip(*unnormalized_warp_coords)
+
                 axes[i + 1].imshow(warp_image)
-                axes[i + 1].plot(warp_coordinates[:, :, 1], warp_coordinates[:, :, 0], 'r.', markersize=1)
+                axes[i + 1].plot(unnormalized_warp_x, unnormalized_warp_y, 'r.', markersize=1)
                 axes[i + 1].set_title(f'Retina Warp {i + 1}')
                 axes[i + 1].axis('off')
 
@@ -42,7 +61,7 @@ def visualize_h5_data(h5_file, img_id, output_dir=None, plot=False, save_format=
 
             # Save the original image with fixations
             original_image_with_fixations = original_image.copy()
-            for x, y in zip(fixation_history_x, fixation_history_y):
+            for x, y in unnormalized_fixations:
                 cv2.circle(original_image_with_fixations, (int(x), int(y)), 5, (255, 0, 0), -1)
             original_image_path = os.path.join(img_output_dir, f'original_image.{save_format}')
             if save_format == 'jpg':
@@ -55,14 +74,17 @@ def visualize_h5_data(h5_file, img_id, output_dir=None, plot=False, save_format=
                 warp_image = retina_warps[i, :, :, :3]  # Take only the first 3 dimensions as the image
                 warp_image_with_fixations = (warp_image * 255).astype(np.uint8).copy()
                 warp_coordinates = retina_warps[i, :, :, 3:]  # Take the last 2 dimensions as coordinates
-                for y, x in zip(warp_coordinates[:, :, 0].flatten(), warp_coordinates[:, :, 1].flatten()):
+
+                # Unnormalize warp coordinates
+                warp_coords = warp_coordinates.reshape(-1, 2)
+                unnormalized_warp_coords = unnormalize_fixations(warp_coords, width, height)
+                for x, y in unnormalized_warp_coords:
                     cv2.circle(warp_image_with_fixations, (int(x), int(y)), 1, (255, 0, 0), -1)
                 warp_image_path = os.path.join(img_output_dir, f'retina_warp_{i + 1}.{save_format}')
                 if save_format == 'jpg':
                     cv2.imwrite(warp_image_path, cv2.cvtColor(warp_image_with_fixations, cv2.COLOR_RGB2BGR))
                 else:
                     plt.imsave(warp_image_path, warp_image_with_fixations)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Visualize H5 data with retina warps and fixation history.")
