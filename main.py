@@ -29,7 +29,7 @@ NUM_FIXATIONS_TRAIN = 10
 NUM_FIXATIONS_VAL = 5
 OUTPUT_DIR = 'retina_warps'
 OUTPUT_FILE = 'retina_warps.h5'
-COCO_DATASET_DIR = '/share/klab/datasets/ms_coco'
+COCO_DATASET_DIR = '/share/klab/datasets/avs/input/NSD_scenes_MEG_size_adjusted_925'
 RANDOM_SEED = 42
 
 # Set random seeds for reproducibility
@@ -47,9 +47,9 @@ centerbias_file = 'centerbias_mit1003.npy'
 centerbias_template = np.load(centerbias_file)
 
 # Load the MS COCO dataset
-coco_train = COCO(os.path.join(COCO_DATASET_DIR, 'mscoco_annotations_trainval2017', 'instances_train2017.json'))
-coco_val = COCO(os.path.join(COCO_DATASET_DIR, 'mscoco_annotations_trainval2017', 'instances_val2017.json'))
-
+# Load the MS COCO dataset
+coco_train = COCO(os.path.join('/share/klab/datasets/avs/input/annotations', 'instances_train2017.json'))
+coco_val = COCO(os.path.join('/share/klab/datasets/avs/input/annotations', 'instances_val2017.json'))
 
 class FovealTransform(torch.nn.Module):
     def __init__(self, fovea_size, img_target_size, img_size, jitter_type, jitter_amount, device, random_seed, retina_size=90):
@@ -421,15 +421,8 @@ def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_histor
         grp.create_dataset('fixation_history_y', data=np.array(fixation_history_y))
 
 
-def process_image(img_info, num_fixations, model, dataset_type):
-    if dataset_type == "train":
-        img_dir = "train2017"
-    elif dataset_type == "val":
-        img_dir = "val2017"
-    else:
-        raise ValueError(f"Invalid dataset type: {dataset_type}")
-
-    img_path = os.path.join(COCO_DATASET_DIR, img_dir, img_info['file_name'])
+def process_image(img_info, num_fixations, model):
+    img_path = os.path.join(COCO_DATASET_DIR, img_info['file_name'])
     image = cv2.imread(img_path)
 
     if image is None:
@@ -442,7 +435,6 @@ def process_image(img_info, num_fixations, model, dataset_type):
 
     output_path = os.path.join(OUTPUT_DIR, OUTPUT_FILE)
     save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, output_path, img_info["id"])
-
 
 def save_processed_ids(processed_ids, processed_ids_file):
     with open(processed_ids_file, 'w') as f:
@@ -468,6 +460,7 @@ processed_train_ids = load_processed_ids(PROCESSED_TRAIN_IDS_FILE)
 processed_val_ids = load_processed_ids(PROCESSED_VAL_IDS_FILE)
 
 # Generate retina warps for the training set
+# Generate retina warps for the training set
 train_img_ids = coco_train.getImgIds()
 print("Number of training images:", len(train_img_ids))
 for img_id in tqdm(train_img_ids, desc="Processing training images"):
@@ -475,20 +468,7 @@ for img_id in tqdm(train_img_ids, desc="Processing training images"):
         tqdm.write(f"Skipping already processed training image: {img_id}")
         continue
     img_info = coco_train.loadImgs(img_id)[0]
-    process_image(img_info, NUM_FIXATIONS_TRAIN, model, dataset_type="train")
+    process_image(img_info, NUM_FIXATIONS_TRAIN, model)
     processed_train_ids.add(img_id)
     save_processed_ids(processed_train_ids, PROCESSED_TRAIN_IDS_FILE)
     tqdm.write(f"Processed training image: {img_id}")
-
-# Generate retina warps for the validation set
-val_img_ids = coco_val.getImgIds()
-print("Number of validation images:", len(val_img_ids))
-for img_id in tqdm(val_img_ids, desc="Processing validation images"):
-    if img_id in processed_val_ids:
-        tqdm.write(f"Skipping already processed validation image: {img_id}")
-        continue
-    img_info = coco_val.loadImgs(img_id)[0]
-    process_image(img_info, NUM_FIXATIONS_VAL, model, dataset_type="val")
-    processed_val_ids.add(img_id)
-    save_processed_ids(processed_val_ids, PROCESSED_VAL_IDS_FILE)
-    tqdm.write(f"Processed validation image: {img_id}")
