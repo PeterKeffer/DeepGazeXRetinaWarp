@@ -460,7 +460,6 @@ processed_train_ids = load_processed_ids(PROCESSED_TRAIN_IDS_FILE)
 processed_val_ids = load_processed_ids(PROCESSED_VAL_IDS_FILE)
 
 # Generate retina warps for the training set
-# Generate retina warps for the training set
 train_img_ids = coco_train.getImgIds()
 print("Number of training images:", len(train_img_ids))
 for img_id in tqdm(train_img_ids, desc="Processing training images"):
@@ -472,3 +471,16 @@ for img_id in tqdm(train_img_ids, desc="Processing training images"):
     processed_train_ids.add(img_id)
     save_processed_ids(processed_train_ids, PROCESSED_TRAIN_IDS_FILE)
     tqdm.write(f"Processed training image: {img_id}")
+
+# Generate retina warps for the validation set
+val_img_ids = coco_val.getImgIds()
+print("Number of validation images:", len(val_img_ids))
+for img_id in tqdm(val_img_ids, desc="Processing validation images"):
+    if img_id in processed_val_ids:
+        tqdm.write(f"Skipping already processed validation image: {img_id}")
+        continue
+    img_info = coco_val.loadImgs(img_id)[0]
+    process_image(img_info, NUM_FIXATIONS_VAL, model)
+    processed_val_ids.add(img_id)
+    save_processed_ids(processed_val_ids, PROCESSED_VAL_IDS_FILE)
+    tqdm.write(f"Processed validation image: {img_id}")
