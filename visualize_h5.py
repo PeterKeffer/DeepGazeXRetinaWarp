@@ -106,9 +106,6 @@ def visualize_h5_data(h5_file, img_id, output_dir=None, plot=False, save_format=
                 warp_coordinates = retina_warps[i, :, :, 3:]  # Take the last 2 dimensions as coordinates
 
                 # Extract and plot the fixation coordinates
-                warp_coords = warp_coordinates[0, 0, :]  # Take the (0, 0, :) entry for coordinates
-                for y, x in [warp_coords]:
-                    cv2.circle(warp_image_with_fixations, (int(x), int(y)), 5, (255, 0, 0), -1)
                 warp_image_path = os.path.join(img_output_dir, f'retina_warp_{i + 1}.{save_format}')
                 if save_format == 'jpg':
                     cv2.imwrite(warp_image_path, cv2.cvtColor(warp_image_with_fixations, cv2.COLOR_RGB2BGR))
@@ -119,7 +116,7 @@ def visualize_h5_data(h5_file, img_id, output_dir=None, plot=False, save_format=
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Visualize H5 data with retina warps and fixation history.")
     parser.add_argument("--h5_file", type=str, default="retina_warps/retina_warps.h5", help="Path to the single h5 file containing all retina warps.")
-    parser.add_argument("--num_examples", type=int, default=10, help="Number of random examples to visualize.")
+    parser.add_argument("--num_examples", type=int, default=4, help="Number of random examples to visualize.")
     parser.add_argument("--output_dir", type=str, default="visualizations", help="Directory to save the visualizations.")
     parser.add_argument("--plot", action="store_true", help="Whether to plot the visualizations.")
     parser.add_argument("--save_format", type=str, default="jpg", choices=["jpg", "png"], help="Format to save the images.")
