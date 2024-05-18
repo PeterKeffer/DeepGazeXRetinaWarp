@@ -410,19 +410,16 @@ def generate_retina_warps(image, num_fixations, model):
         retina_warps.append(retina_img)
 
     return image, retina_warps, fixation_history_x, fixation_history_y
-
-
-def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, output_path, img_id):
+def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, output_path, file_name):
     with h5py.File(output_path, 'a') as f:  # 'a' mode for appending data
-        grp = f.create_group(str(img_id))
+        grp = f.create_group(file_name)
         grp.create_dataset('original_image', data=original_image)
         grp.create_dataset('retina_warps', data=np.array(retina_warps))
         grp.create_dataset('fixation_history_x', data=np.array(fixation_history_x))
         grp.create_dataset('fixation_history_y', data=np.array(fixation_history_y))
+        grp.attrs['file_name'] = file_name
 
-
-def process_image(img_info, num_fixations, model):
-    img_path = os.path.join(COCO_DATASET_DIR, img_info['file_name'])
+def process_image(img_path, num_fixations, model):
     image = cv2.imread(img_path)
 
     if image is None:
@@ -434,53 +431,37 @@ def process_image(img_info, num_fixations, model):
     original_image, retina_warps, fixation_history_x, fixation_history_y = generate_retina_warps(image, num_fixations, model)
 
     output_path = os.path.join(OUTPUT_DIR, OUTPUT_FILE)
-    save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, output_path, img_info["id"])
+    file_name = os.path.basename(img_path)
+    save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, output_path, file_name)
 
-def save_processed_ids(processed_ids, processed_ids_file):
-    with open(processed_ids_file, 'w') as f:
-        f.write(' '.join(map(str, processed_ids)))
+def save_processed_files(processed_files, processed_files_file):
+    with open(processed_files_file, 'w') as f:
+        f.write('\n'.join(processed_files))
 
-
-def load_processed_ids(processed_ids_file):
-    if os.path.exists(processed_ids_file):
-        with open(processed_ids_file, 'r') as f:
-            return set(map(int, f.read().split()))
+def load_processed_files(processed_files_file):
+    if os.path.exists(processed_files_file):
+        with open(processed_files_file, 'r') as f:
+            return set(f.read().splitlines())
     return set()
-
 
 # Create the output directory if it doesn't exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Constants
-PROCESSED_TRAIN_IDS_FILE = 'processed_train_ids.txt'
-PROCESSED_VAL_IDS_FILE = 'processed_val_ids.txt'
+PROCESSED_FILES_FILE = 'processed_files.txt'
 
-# Load the processed image IDs
-processed_train_ids = load_processed_ids(PROCESSED_TRAIN_IDS_FILE)
-processed_val_ids = load_processed_ids(PROCESSED_VAL_IDS_FILE)
+# Load the processed file names
+processed_files = load_processed_files(PROCESSED_FILES_FILE)
 
-# Generate retina warps for the training set
-train_img_ids = coco_train.getImgIds()
-print("Number of training images:", len(train_img_ids))
-for img_id in tqdm(train_img_ids, desc="Processing training images"):
-    if img_id in processed_train_ids:
-        tqdm.write(f"Skipping already processed training image: {img_id}")
+# Generate retina warps for the images in the dataset
+img_files = [f for f in os.listdir(COCO_DATASET_DIR) if f.lower().endswith('.jpg')]
+print("Number of images:", len(img_files))
+for img_file in tqdm(img_files, desc="Processing images"):
+    if img_file in processed_files:
+        tqdm.write(f"Skipping already processed image: {img_file}")
         continue
-    img_info = coco_train.loadImgs(img_id)[0]
-    process_image(img_info, NUM_FIXATIONS_TRAIN, model)
-    processed_train_ids.add(img_id)
-    save_processed_ids(processed_train_ids, PROCESSED_TRAIN_IDS_FILE)
-    tqdm.write(f"Processed training image: {img_id}")
-
-# Generate retina warps for the validation set
-val_img_ids = coco_val.getImgIds()
-print("Number of validation images:", len(val_img_ids))
-for img_id in tqdm(val_img_ids, desc="Processing validation images"):
-    if img_id in processed_val_ids:
-        tqdm.write(f"Skipping already processed validation image: {img_id}")
-        continue
-    img_info = coco_val.loadImgs(img_id)[0]
-    process_image(img_info, NUM_FIXATIONS_VAL, model)
-    processed_val_ids.add(img_id)
-    save_processed_ids(processed_val_ids, PROCESSED_VAL_IDS_FILE)
-    tqdm.write(f"Processed validation image: {img_id}")
+    img_path = os.path.join(COCO_DATASET_DIR, img_file)
+    process_image(img_path, NUM_FIXATIONS_TRAIN, model)
+    processed_files.add(img_file)
+    save_processed_files(processed_files, PROCESSED_FILES_FILE)
+    tqdm.write(f"Processed image: {img_file}")
