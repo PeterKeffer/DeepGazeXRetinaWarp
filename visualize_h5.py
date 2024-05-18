@@ -74,11 +74,11 @@ def visualize_h5_data(h5_file, img_id, output_dir=None, plot=False, save_format=
                 warp_image = retina_warps[i, :, :, :3]  # Take only the first 3 dimensions as the image
                 warp_image_with_fixations = (warp_image * 255).astype(np.uint8).copy()
                 warp_coordinates = retina_warps[i, :, :, 3:]  # Take the last 2 dimensions as coordinates
-                print(warp_coordinates)
+                print(warp_coordinates[:5], warp_coordinates.shape)
                 # Unnormalize warp coordinates
                 warp_coords = warp_coordinates.reshape(-1, 2)
                 unnormalized_warp_coords = unnormalize_fixations(warp_coords, width, height)
-                print(unnormalized_warp_coords)
+                print(unnormalized_warp_coords[:5], len(unnormalized_warp_coords))
                 for x, y in unnormalized_warp_coords:
                     cv2.circle(warp_image_with_fixations, (int(x), int(y)), 1, (255, 0, 0), -1)
                 warp_image_path = os.path.join(img_output_dir, f'retina_warp_{i + 1}.{save_format}')
