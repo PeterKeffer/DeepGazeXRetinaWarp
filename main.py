@@ -61,8 +61,8 @@ class FovealTransform(torch.nn.Module):
         retina_resolution = img_target_size  # img_target_size if img_size[0] == 256 else img_target_size*2
         self.N_r, self.resulting_resolution = self.find_number_of_rings(retina_resolution, self.roh_max, self.roh_0)
         self.N_r = int(self.N_r)
-        self.x_0 = int(img_size[1] // 2)  # Updated
-        self.y_0 = int(img_size[0] // 2)  # Updated
+        self.x_0 = int(img_size[0] // 2)
+        self.y_0 = int(img_size[1] // 2)
         self.random_seed = random_seed
 
         self.retina_coordinates, self.fovea_mask = self.create_sampling_coordinates(self.N_r,
@@ -71,7 +71,6 @@ class FovealTransform(torch.nn.Module):
                                                                                     self.x_0,
                                                                                     self.y_0)
 
-        print("Retina coordinates 1", self.retina_coordinates, "Shape", self.retina_coordinates.shape)
         # postprocessing of coordinates to get rid of artifacts
         count = 0
         while self.retina_coordinates[0, -1][0] <= self.retina_coordinates[0, -2][0] or self.retina_coordinates[0, -1][1] > self.retina_coordinates[0, -2][1]:
@@ -83,12 +82,10 @@ class FovealTransform(torch.nn.Module):
 
         # self.retina_coordinates = (self.retina_coordinates * 2 - img_size[0]) / img_size[0]  # between -1 and 1 because gridsampler requires that
 
-        self.retina_coordinates[:, :, 0] = (self.retina_coordinates[:, :, 0] * 2 - img_size[1]) / img_size[1]  # Scale x-coordinates
-        self.retina_coordinates[:, :, 1] = (self.retina_coordinates[:, :, 1] * 2 - img_size[0]) / img_size[0]  # Scale y-coordinates
+        self.retina_coordinates[:, :, 1] = (self.retina_coordinates[:, :, 1] * 2 - img_size[1]) / img_size[1]  # Scale x-coordinates
+        self.retina_coordinates[:, :, 0] = (self.retina_coordinates[:, :,0] * 2 - img_size[0]) / img_size[0]  # Scale y-coordinates
 
         self.retina_coordinates = self.retina_coordinates.contiguous()
-
-        print("Retina coordinates 2", self.retina_coordinates)
         self.img_target_size = retina_size
         self.img_size = img_size
         self.jitter_type = jitter_type
@@ -181,7 +178,6 @@ class FovealTransform(torch.nn.Module):
                 new_coordinates[i, j, 0] = x
                 new_coordinates[i, j, 1] = y
 
-
         # create a fovea mask (with ones where the fovea is not), used to add irregularity to peripheral cone locations
         fovea_mask = np.ones((self.max_x_prime, self.max_y_prime, 2))
         fovea_mask[self.max_x_prime // 2 - self.roh_0:self.max_x_prime // 2 + self.roh_0, self.max_y_prime // 2 - self.roh_0:self.max_y_prime // 2 + self.roh_0, :] = 0.
@@ -205,7 +201,6 @@ class FovealTransform(torch.nn.Module):
             jitter = (torch.randn(retina_warp_coordinates.shape) * jitter_amount * keep_identical_mask.float()).int()
             jitter = jitter * 2 / self.img_size[0]
 
-        print("Jitter", jitter)
         return retina_warp_coordinates + jitter
 
     def warp_images(self, images, fixations, retina_warp_coordinates, fovea_mask,
@@ -219,9 +214,7 @@ class FovealTransform(torch.nn.Module):
         """
         fixations = fixations.float().cpu()
         batch_size = images.shape[0]
-        print("BatchSize", batch_size)
         # merge batch and time dimension
-        print("Fixations shape", len(fixations.shape))
         if len(fixations.shape) > 2:
             # if there is only one image but a sequence of fixations, repeat the image
             if not len(images.shape) > 4:
@@ -241,7 +234,6 @@ class FovealTransform(torch.nn.Module):
 
         # add jitter while still assuming central fixation
         if jitter_amount > 0.0:
-            print("ADD JITTER")
             retina_warp_coordinates = self.add_jitter(retina_warp_coordinates,
                                                       self.fovea_mask,
                                                       self.jitter_amount,
@@ -252,21 +244,17 @@ class FovealTransform(torch.nn.Module):
         x = fixations[:, 0].unsqueeze(1).unsqueeze(1)
         y = fixations[:, 1].unsqueeze(1).unsqueeze(1)
         shifted_retina_warp_coordinates = retina_warp_coordinates
-        print("ShiftedCOordniates1", shifted_retina_warp_coordinates)
-        print("x", x, "y", y)
         # shift the retina warp coordinates to the fixation location
-        print("RetinaWarpCoordinates", retina_warp_coordinates[:, :, :, 0], retina_warp_coordinates[:, :, :, 1])
-        print("X", x, "Y", y)
         shifted_retina_warp_coordinates[:, :, :, 0] = retina_warp_coordinates[:, :, :, 0] + x
         shifted_retina_warp_coordinates[:, :, :, 1] = retina_warp_coordinates[:, :, :, 1] + y
         # warp the images
         images = images.to("cpu")
         shifted_retina_warp_coordinates = shifted_retina_warp_coordinates.to("cpu")
-        print("ShiftedCOordniates2", shifted_retina_warp_coordinates)
 
         warped_images = torch.nn.functional.grid_sample(input=images, grid=shifted_retina_warp_coordinates).to(self.device).contiguous()  # tfa.image.resampler(data=images, warp=shifted_retina_warp_coordinates)
 
         shifted_retina_coordinates_batch = shifted_retina_warp_coordinates.permute(0, 3, 1, 2).contiguous().to(self.device)
+
         # which pixels are outside the image? (everything bigger +-1)
         outside_image = (shifted_retina_coordinates_batch[:, 0, :, :] < -1) | (shifted_retina_coordinates_batch[:, 0, :, :] > 1) | (shifted_retina_coordinates_batch[:, 1, :, :] < -1) | (shifted_retina_coordinates_batch[:, 1, :, :] > 1)
 
@@ -383,7 +371,6 @@ def predict_fixation(model, image_tensor, centerbias_tensor, x_hist_tensor, y_hi
 
 def generate_retina_warps(image, num_fixations, model):
     height, width = image.shape[:2]
-    print("height", height, "width", width)
     centerbias = rescale_centerbias(centerbias_template, height, width)
     image_tensor = torch.tensor([image.transpose(2, 0, 1)]).to(DEVICE)
     image_tensor = image_tensor / 255.0
@@ -398,7 +385,7 @@ def generate_retina_warps(image, num_fixations, model):
 
     foveal_transform = FovealTransform(fovea_size=FOVEA_SIZE,
                                        img_target_size=IMG_TARGET_SIZE,
-                                       img_size=(height, width),
+                                       img_size=(width, height),
                                        jitter_type=JITTER_TYPE,
                                        jitter_amount=JITTER_AMOUNT,
                                        device=DEVICE,
@@ -432,9 +419,7 @@ def generate_retina_warps(image, num_fixations, model):
         normalized_fixation_history.append((normalized_next_x, normalized_next_y))
 
         fixations = torch.tensor([[normalized_next_x, normalized_next_y]]).to(DEVICE)
-        print("ImageINput Shape", image_tensor.shape)
-        # Add batch dimension
-        print("ImageINput Shape after unsqueeze", image_tensor.shape)
+
         retina_img = foveal_transform(image_tensor.float(), fixations)[0].permute(1, 2, 0).cpu().numpy()
 
         retina_warps.append(retina_img)
