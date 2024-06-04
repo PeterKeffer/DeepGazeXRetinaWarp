@@ -22,7 +22,7 @@ from tqdm import tqdm
 # Hyperparameters
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 FOVEA_SIZE = 0.1  # Fovea size as a fraction of image size
-IMG_TARGET_SIZE = 150  # Retina Resolution of the retina warp output
+IMG_TARGET_SIZE = 200  # Retina Resolution of the retina warp output
 RETINA_SIZE = 128 # TODO - Check if this is the correct value
 JITTER_TYPE = "gaussian"
 JITTER_AMOUNT = 0.0
@@ -441,7 +441,15 @@ def process_image(img_path, num_fixations, model):
         print(f"Failed to load image: {img_path}")
         return
 
+    # Crop the image to 710x710
+    height, width, _ = image.shape
+    min_dim = min(height, width)
+    start_x = (width - min_dim) // 2
+    start_y = (height - min_dim) // 2
+    image = image[start_y:start_y+min_dim, start_x:start_x+min_dim]
+
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
 
     original_image, retina_warps, fixation_history_x, fixation_history_y = generate_retina_warps(image, num_fixations, model)
 
