@@ -171,14 +171,16 @@ class FovealTransform(torch.nn.Module):
         for i in range(0, self.max_x_prime):
             for j in range(0, self.max_y_prime):
                 x, y = self.get_fcg_coordinates(i, j, N_r, roh_0, roh_max, x_0, y_0, inverse=True)
-                new_coordinates[i, j, 0] = x
-                new_coordinates[i, j, 1] = y
+                new_coordinates[i, j, 0] = x - x_0  # Subtract x_0 to center the coordinates
+                new_coordinates[i, j, 1] = y_0 - y  # Subtract y from y_0 to invert the y-axis
+
+        new_coordinates = new_coordinates / roh_max  # Normalize the coordinates to the range [-1, 1]
 
         # create a fovea mask (with ones where the fovea is not), used to add irregularity to peripheral cone locations
         fovea_mask = np.ones((self.max_x_prime, self.max_y_prime, 2))
         fovea_mask[self.max_x_prime // 2 - self.roh_0:self.max_x_prime // 2 + self.roh_0, self.max_y_prime // 2 - self.roh_0:self.max_y_prime // 2 + self.roh_0, :] = 0.
         fovea_mask = torch.Tensor(fovea_mask)
-        return torch.Tensor(new_coordinates[:, :, ::-1].astype(np.float32)), fovea_mask
+        return torch.Tensor(new_coordinates.astype(np.float32)), fovea_mask
 
     def add_jitter(self, retina_warp_coordinates, fovea_mask, jitter_amount=0.0, jitter_type="gaussian"):
         """
