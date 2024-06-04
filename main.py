@@ -174,8 +174,6 @@ class FovealTransform(torch.nn.Module):
         for i in range(0, self.max_x_prime):
             for j in range(0, self.max_y_prime):
                 x, y = self.get_fcg_coordinates(i, j, N_r, roh_0, roh_max, x_0, y_0, inverse=True)
-                print("x", x,y)
-                print( "x0", x_0, y_0)
                 new_coordinates[i, j, 0] = x
                 new_coordinates[i, j, 1] = y
 
@@ -239,6 +237,7 @@ class FovealTransform(torch.nn.Module):
 
         # add jitter while still assuming central fixation
         if jitter_amount > 0.0:
+            print("ADD JITTER")
             retina_warp_coordinates = self.add_jitter(retina_warp_coordinates,
                                                       self.fovea_mask,
                                                       self.jitter_amount,
