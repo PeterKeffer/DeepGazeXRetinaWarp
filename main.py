@@ -81,7 +81,11 @@ class FovealTransform(torch.nn.Module):
         self.retina_coordinates = self.retina_coordinates[:-count, :-count]
         self.fovea_mask = self.fovea_mask[:-count, :-count]
 
-        self.retina_coordinates = (self.retina_coordinates * 2 - img_size[0]) / img_size[0]  # between -1 and 1 because gridsampler requires that
+        # self.retina_coordinates = (self.retina_coordinates * 2 - img_size[0]) / img_size[0]  # between -1 and 1 because gridsampler requires that
+
+        self.retina_coordinates[:, :, 0] = (self.retina_coordinates[:, :, 0] * 2 - img_size[1]) / img_size[1]  # Scale x-coordinates
+        self.retina_coordinates[:, :, 1] = (self.retina_coordinates[:, :, 1] * 2 - img_size[0]) / img_size[0]  # Scale y-coordinates
+
         self.retina_coordinates = self.retina_coordinates.contiguous()
 
         print("Retina coordinates 2", self.retina_coordinates)
@@ -162,6 +166,7 @@ class FovealTransform(torch.nn.Module):
         Given a number of rings N_r, a fovea radius roh_0, an image radius roh_max, and central fixation coordinates
         x_0 and y_0 (==roh_max)
         """
+        assert y_0 == roh_max, "fixation coordinates are expected to be in the center"
 
         self.a = np.exp((np.log(self.roh_max / self.roh_0) / self.N_r))
         self.max_delta_roh = (self.roh_0 + self.N_r) / np.floor((self.a ** (self.N_r - 1)) * self.roh_0)
