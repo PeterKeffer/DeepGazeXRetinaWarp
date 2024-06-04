@@ -201,6 +201,7 @@ class FovealTransform(torch.nn.Module):
             jitter = (torch.randn(retina_warp_coordinates.shape) * jitter_amount * keep_identical_mask.float()).int()
             jitter = jitter * 2 / self.img_size[0]
 
+        print("Jitter", jitter)
         return retina_warp_coordinates + jitter
 
     def warp_images(self, images, fixations, retina_warp_coordinates, fovea_mask,
