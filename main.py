@@ -71,6 +71,7 @@ class FovealTransform(torch.nn.Module):
                                                                                     self.x_0,
                                                                                     self.y_0)
 
+        print("Retina coordinates 1", self.retina_coordinates)
         # postprocessing of coordinates to get rid of artifacts
         count = 0
         while self.retina_coordinates[0, -1][0] <= self.retina_coordinates[0, -2][0] or self.retina_coordinates[0, -1][1] > self.retina_coordinates[0, -2][1]:
@@ -82,6 +83,8 @@ class FovealTransform(torch.nn.Module):
 
         self.retina_coordinates = (self.retina_coordinates * 2 - img_size[0]) / img_size[0]  # between -1 and 1 because gridsampler requires that
         self.retina_coordinates = self.retina_coordinates.contiguous()
+
+        print("Retina coordinates 2", self.retina_coordinates)
         self.img_target_size = retina_size
         self.img_size = img_size
         self.jitter_type = jitter_type
@@ -176,7 +179,6 @@ class FovealTransform(torch.nn.Module):
                 new_coordinates[i, j, 0] = x
                 new_coordinates[i, j, 1] = y
 
-        #new_coordinates = new_coordinates / roh_max  # Normalize the coordinates to the range [-1, 1]
 
         # create a fovea mask (with ones where the fovea is not), used to add irregularity to peripheral cone locations
         fovea_mask = np.ones((self.max_x_prime, self.max_y_prime, 2))
