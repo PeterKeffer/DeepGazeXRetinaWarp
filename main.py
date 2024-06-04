@@ -217,7 +217,9 @@ class FovealTransform(torch.nn.Module):
         """
         fixations = fixations.float().cpu()
         batch_size = images.shape[0]
+        print("BatchSize", batch_size)
         # merge batch and time dimension
+        print("Fixations shape", len(fixations.shape))
         if len(fixations.shape) > 2:
             # if there is only one image but a sequence of fixations, repeat the image
             if not len(images.shape) > 4:
