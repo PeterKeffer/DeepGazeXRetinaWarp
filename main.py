@@ -385,7 +385,8 @@ def generate_retina_warps(image, num_fixations, model):
                                        jitter_type=JITTER_TYPE,
                                        jitter_amount=JITTER_AMOUNT,
                                        device=DEVICE,
-                                       random_seed=RANDOM_SEED)
+                                       random_seed=RANDOM_SEED,
+                                       retina_size=RETINA_SIZE)
 
     retina_warps = []
 
