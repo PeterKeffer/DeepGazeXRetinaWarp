@@ -174,8 +174,8 @@ class FovealTransform(torch.nn.Module):
         for i in range(0, self.max_x_prime):
             for j in range(0, self.max_y_prime):
                 x, y = self.get_fcg_coordinates(i, j, N_r, roh_0, roh_max, x_0, y_0, inverse=True)
-                new_coordinates[i, j, 0] = x
-                new_coordinates[i, j, 1] = y
+                new_coordinates[i, j, 0] = 0
+                new_coordinates[i, j, 1] = 0
 
 
         # create a fovea mask (with ones where the fovea is not), used to add irregularity to peripheral cone locations
