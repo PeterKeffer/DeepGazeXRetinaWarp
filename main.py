@@ -428,7 +428,10 @@ def generate_retina_warps(image, num_fixations, model):
         normalized_fixation_history.append((normalized_next_x, normalized_next_y))
 
         fixations = torch.tensor([[normalized_next_x, normalized_next_y]]).to(DEVICE)
-
+        print("ImageINput Shape", image_tensor.shape)
+        # Add batch dimension
+        fixations = fixations.unsqueeze(0)
+        print("ImageINput Shape after unsqueeze", image_tensor.shape)
         retina_img = foveal_transform(image_tensor.float(), fixations)[0].permute(1, 2, 0).cpu().numpy()
 
         retina_warps.append(retina_img)
