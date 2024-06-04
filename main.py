@@ -22,11 +22,11 @@ from tqdm import tqdm
 # Hyperparameters
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 FOVEA_SIZE = 0.1  # Fovea size as a fraction of image size
-IMG_TARGET_SIZE = 100  # Target size of the retina warp output
+IMG_TARGET_SIZE = 150  # Retina Resolution of the retina warp output
+RETINA_SIZE = 128 # TODO - Check if this is the correct value
 JITTER_TYPE = "gaussian"
-JITTER_AMOUNT = 0.1
+JITTER_AMOUNT = 0.0
 NUM_FIXATIONS_TRAIN = 10
-NUM_FIXATIONS_VAL = 5
 OUTPUT_DIR = 'retina_warps'
 OUTPUT_FILE = 'retina_warps.h5'
 COCO_DATASET_DIR = '/share/klab/datasets/avs/input/NSD_scenes_MEG_size_adjusted_925'
