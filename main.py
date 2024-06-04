@@ -162,7 +162,6 @@ class FovealTransform(torch.nn.Module):
         Given a number of rings N_r, a fovea radius roh_0, an image radius roh_max, and central fixation coordinates
         x_0 and y_0 (==roh_max)
         """
-        assert y_0 == roh_max, "fixation coordinates are expected to be in the center"
 
         self.a = np.exp((np.log(self.roh_max / self.roh_0) / self.N_r))
         self.max_delta_roh = (self.roh_0 + self.N_r) / np.floor((self.a ** (self.N_r - 1)) * self.roh_0)
