@@ -394,7 +394,7 @@ def generate_retina_warps(image, num_fixations, model):
 
     foveal_transform = FovealTransform(fovea_size=FOVEA_SIZE,
                                        img_target_size=IMG_TARGET_SIZE,
-                                       img_size=(height, width),
+                                       img_size=(width, height),
                                        jitter_type=JITTER_TYPE,
                                        jitter_amount=JITTER_AMOUNT,
                                        device=DEVICE,
