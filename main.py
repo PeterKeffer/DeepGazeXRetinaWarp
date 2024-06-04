@@ -248,7 +248,7 @@ class FovealTransform(torch.nn.Module):
         y = fixations[:, 1].unsqueeze(1).unsqueeze(1)
         shifted_retina_warp_coordinates = retina_warp_coordinates
         print("ShiftedCOordniates1", shifted_retina_warp_coordinates)
-
+        print("x", x, "y", y)
         # shift the retina warp coordinates to the fixation location
         shifted_retina_warp_coordinates[:, :, :, 0] = retina_warp_coordinates[:, :, :, 0] + x
         shifted_retina_warp_coordinates[:, :, :, 1] = retina_warp_coordinates[:, :, :, 1] + y
