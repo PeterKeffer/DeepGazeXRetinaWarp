@@ -61,8 +61,8 @@ class FovealTransform(torch.nn.Module):
         retina_resolution = img_target_size  # img_target_size if img_size[0] == 256 else img_target_size*2
         self.N_r, self.resulting_resolution = self.find_number_of_rings(retina_resolution, self.roh_max, self.roh_0)
         self.N_r = int(self.N_r)
-        self.x_0 = int(img_size[0] // 2)
-        self.y_0 = int(img_size[1] // 2)
+        self.x_0 = int(img_size[1] // 2)  # Updated
+        self.y_0 = int(img_size[0] // 2)  # Updated
         self.random_seed = random_seed
 
         self.retina_coordinates, self.fovea_mask = self.create_sampling_coordinates(self.N_r,
@@ -394,7 +394,7 @@ def generate_retina_warps(image, num_fixations, model):
 
     foveal_transform = FovealTransform(fovea_size=FOVEA_SIZE,
                                        img_target_size=IMG_TARGET_SIZE,
-                                       img_size=(width, height),
+                                       img_size=(height, width),
                                        jitter_type=JITTER_TYPE,
                                        jitter_amount=JITTER_AMOUNT,
                                        device=DEVICE,
