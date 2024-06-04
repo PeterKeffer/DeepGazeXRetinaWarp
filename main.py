@@ -58,7 +58,7 @@ class FovealTransform(torch.nn.Module):
         self.device = device
         self.roh_0 = int(fovea_size * (img_size[1] // 2))
         self.roh_max = int(img_size[1] // 2)
-        retina_resolution = img_target_size  # img_target_size if img_size[0] == 256 else img_target_size*2
+        retina_resolution = img_target_size*2  # img_target_size if img_size[0] == 256 else img_target_size*2
         self.N_r, self.resulting_resolution = self.find_number_of_rings(retina_resolution, self.roh_max, self.roh_0)
         self.N_r = int(self.N_r)
         self.x_0 = int(img_size[0] // 2)
