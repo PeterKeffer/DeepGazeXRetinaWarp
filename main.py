@@ -71,7 +71,7 @@ class FovealTransform(torch.nn.Module):
                                                                                     self.x_0,
                                                                                     self.y_0)
 
-        print("Retina coordinates 1", self.retina_coordinates)
+        print("Retina coordinates 1", self.retina_coordinates, "Shape", self.retina_coordinates.shape)
         # postprocessing of coordinates to get rid of artifacts
         count = 0
         while self.retina_coordinates[0, -1][0] <= self.retina_coordinates[0, -2][0] or self.retina_coordinates[0, -1][1] > self.retina_coordinates[0, -2][1]:
@@ -247,17 +247,19 @@ class FovealTransform(torch.nn.Module):
         x = fixations[:, 0].unsqueeze(1).unsqueeze(1)
         y = fixations[:, 1].unsqueeze(1).unsqueeze(1)
         shifted_retina_warp_coordinates = retina_warp_coordinates
+        print("ShiftedCOordniates1", shifted_retina_warp_coordinates)
+
         # shift the retina warp coordinates to the fixation location
         shifted_retina_warp_coordinates[:, :, :, 0] = retina_warp_coordinates[:, :, :, 0] + x
         shifted_retina_warp_coordinates[:, :, :, 1] = retina_warp_coordinates[:, :, :, 1] + y
         # warp the images
         images = images.to("cpu")
         shifted_retina_warp_coordinates = shifted_retina_warp_coordinates.to("cpu")
+        print("ShiftedCOordniates2", shifted_retina_warp_coordinates)
 
         warped_images = torch.nn.functional.grid_sample(input=images, grid=shifted_retina_warp_coordinates).to(self.device).contiguous()  # tfa.image.resampler(data=images, warp=shifted_retina_warp_coordinates)
 
         shifted_retina_coordinates_batch = shifted_retina_warp_coordinates.permute(0, 3, 1, 2).contiguous().to(self.device)
-
         # which pixels are outside the image? (everything bigger +-1)
         outside_image = (shifted_retina_coordinates_batch[:, 0, :, :] < -1) | (shifted_retina_coordinates_batch[:, 0, :, :] > 1) | (shifted_retina_coordinates_batch[:, 1, :, :] < -1) | (shifted_retina_coordinates_batch[:, 1, :, :] > 1)
 
