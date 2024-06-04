@@ -174,8 +174,8 @@ class FovealTransform(torch.nn.Module):
         for i in range(0, self.max_x_prime):
             for j in range(0, self.max_y_prime):
                 x, y = self.get_fcg_coordinates(i, j, N_r, roh_0, roh_max, x_0, y_0, inverse=True)
-                new_coordinates[i, j, 0] = 0
-                new_coordinates[i, j, 1] = 0
+                new_coordinates[i, j, 0] = x
+                new_coordinates[i, j, 1] = y
 
 
         # create a fovea mask (with ones where the fovea is not), used to add irregularity to peripheral cone locations
@@ -379,6 +379,7 @@ def predict_fixation(model, image_tensor, centerbias_tensor, x_hist_tensor, y_hi
 
 def generate_retina_warps(image, num_fixations, model):
     height, width = image.shape[:2]
+    print(height, width)
     centerbias = rescale_centerbias(centerbias_template, height, width)
     image_tensor = torch.tensor([image.transpose(2, 0, 1)]).to(DEVICE)
     image_tensor = image_tensor / 255.0
