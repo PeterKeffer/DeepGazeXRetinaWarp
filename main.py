@@ -443,11 +443,11 @@ def process_image(img_path, num_fixations, model):
         return
 
     # Crop the image to 710x710
-    height, width, _ = image.shape
+    """    height, width, _ = image.shape
     min_dim = min(height, width)
     start_x = (width - min_dim) // 2
     start_y = (height - min_dim) // 2
-    image = image[start_y:start_y+min_dim, start_x:start_x+min_dim]
+    image = image[start_y:start_y+min_dim, start_x:start_x+min_dim]"""
 
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
