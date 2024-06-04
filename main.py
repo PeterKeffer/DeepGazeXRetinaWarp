@@ -173,8 +173,8 @@ class FovealTransform(torch.nn.Module):
                 x, y = self.get_fcg_coordinates(i, j, N_r, roh_0, roh_max, x_0, y_0, inverse=True)
                 print("x", x,y)
                 print( "x0", x_0, y_0)
-                new_coordinates[i, j, 0] = x - x_0  # Subtract x_0 to center the coordinates
-                new_coordinates[i, j, 1] = y_0 - y  # Subtract y from y_0 to invert the y-axis
+                new_coordinates[i, j, 0] = x
+                new_coordinates[i, j, 1] = y
 
         #new_coordinates = new_coordinates / roh_max  # Normalize the coordinates to the range [-1, 1]
 
