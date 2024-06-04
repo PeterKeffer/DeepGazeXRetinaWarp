@@ -378,7 +378,7 @@ def predict_fixation(model, image_tensor, centerbias_tensor, x_hist_tensor, y_hi
 
 
 def generate_retina_warps(image, num_fixations, model):
-    height, width = image.shape[:2]
+    width, height = image.shape[:2]
     print(height, width)
     centerbias = rescale_centerbias(centerbias_template, height, width)
     image_tensor = torch.tensor([image.transpose(2, 0, 1)]).to(DEVICE)
