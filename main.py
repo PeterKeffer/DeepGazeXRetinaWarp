@@ -25,7 +25,7 @@ FOVEA_SIZE = 0.1  # Fovea size as a fraction of image size
 IMG_TARGET_SIZE = 175  # Retina Resolution of the retina warp output
 RETINA_SIZE = 128 # TODO - Check if this is the correct value
 JITTER_TYPE = "gaussian"
-JITTER_AMOUNT = 0.1
+JITTER_AMOUNT = 0.0
 NUM_FIXATIONS_TRAIN = 10
 OUTPUT_DIR = 'retina_warps'
 OUTPUT_FILE = 'retina_warps.h5'
@@ -328,6 +328,7 @@ def unnormalize_fixations(fixations, width, height):
     unnormalized_y = (y * (height / 2.0)) + (height / 2.0)
     unnormalized_fixations.append((unnormalized_x, unnormalized_y))
   return unnormalized_fixations
+
 
 def get_fixation_history(fixation_coordinates, model):
     """
