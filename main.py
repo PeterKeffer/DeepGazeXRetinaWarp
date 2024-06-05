@@ -80,10 +80,10 @@ class FovealTransform(torch.nn.Module):
         self.retina_coordinates = self.retina_coordinates[:-count, :-count]
         self.fovea_mask = self.fovea_mask[:-count, :-count]
 
-        self.retina_coordinates = (self.retina_coordinates * 2 - img_size[0]) / img_size[0]  # between -1 and 1 because gridsampler requires that
+        # self.retina_coordinates = (self.retina_coordinates * 2 - img_size[0]) / img_size[0]  # between -1 and 1 because gridsampler requires that
 
-        #self.retina_coordinates[:, :, 1] = (self.retina_coordinates[:, :, 1] * 2 - img_size[0]) / img_size[0]  # Scale x-coordinates
-        #self.retina_coordinates[:, :, 0] = (self.retina_coordinates[:, :,0] * 2 - img_size[1]) / img_size[1]  # Scale y-coordinates
+        self.retina_coordinates[:, :, 1] = (self.retina_coordinates[:, :, 1] * 2 - img_size[0]) / img_size[0]  # Scale x-coordinates
+        self.retina_coordinates[:, :, 0] = (self.retina_coordinates[:, :,0] * 2 - img_size[1]) / img_size[1]  # Scale y-coordinates
 
         self.retina_coordinates = self.retina_coordinates.contiguous()
         self.img_target_size = retina_size
