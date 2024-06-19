@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import zoom
 from scipy.special import logsumexp
 import torch
+import torch.hub
 import torchvision
 import deepgaze_pytorch
 from deepgaze_pytorch.modules import encode_scanpath_features
@@ -22,6 +23,9 @@ from foveal_transform import FovealTransform
 import logging
 from typing import List, Tuple, Set
 
+# YOLO-specific imports
+from ultralytics import YOLO
+
 # Constants
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 FOVEA_SIZE = 0.1  # Fovea size as a fraction of image size
@@ -37,6 +41,12 @@ RANDOM_SEED = 42
 INCLUDE_INITIAL_FIXATION = True # Flag to control whether to include the initial fixation at the center point
 CENTERBIAS_FILE = 'centerbias_mit1003.npy'
 PROCESSED_FILES_FILE = 'processed_files.txt'
+
+# YOLO-specific constants
+YOLO_WEIGHTS_URL = 'https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8s.pt'  # URL to download YOLOv8 weights
+YOLO_WEIGHTS_FILE = 'yolov8s.pt'  # Local file name to save the downloaded weights
+YOLO_CONF_THRESH = 0.25  # Confidence threshold for YOLOv8 predictions
+YOLO_IOU_THRESH = 0.45  # IOU threshold for YOLOv8 non-maximum suppression
 
 # Set random seeds for reproducibility
 np.random.seed(RANDOM_SEED)
@@ -56,6 +66,50 @@ coco_val = COCO(os.path.join('/share/klab/datasets/avs/input/annotations', 'inst
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# YOLO-specific initialization
+if not os.path.exists(YOLO_WEIGHTS_FILE):
+    torch.hub.download_url_to_file(YOLO_WEIGHTS_URL, YOLO_WEIGHTS_FILE)
+yolo_model = YOLO(YOLO_WEIGHTS_FILE)
+yolo_model.to(DEVICE).eval()
+
+def get_bounding_boxes(image: np.ndarray) -> List[Tuple[float, float, float, float, int]]:
+    """
+    Get the bounding boxes of objects in the image using YOLOv8.
+
+    Args:
+        image: Input image.
+
+    Returns:
+        List of bounding boxes, each represented as (x1, y1, x2, y2, class_id).
+    """
+    results = yolo_model(image)
+    bounding_boxes = []
+    for result in results:
+        boxes = result.boxes.xyxy.cpu().numpy()
+        classes = result.boxes.cls.cpu().numpy().astype(int)
+        for box, cls in zip(boxes, classes):
+            x1, y1, x2, y2 = map(int, box)
+            bounding_boxes.append((x1, y1, x2, y2, cls))
+    return bounding_boxes
+
+def get_classes_at_coordinate(x: float, y: float, bounding_boxes: List[Tuple[float, float, float, float, int]]) -> List[int]:
+    """
+    Get the classes of the bounding boxes that contain the given coordinate.
+
+    Args:
+        x: x-coordinate.
+        y: y-coordinate.
+        bounding_boxes: List of bounding boxes, each represented as (x1, y1, x2, y2, class_id).
+
+    Returns:
+        List of class IDs of the bounding boxes that contain the given coordinate.
+    """
+    classes = []
+    for x1, y1, x2, y2, class_id in bounding_boxes:
+        if x1 <= x <= x2 and y1 <= y <= y2:
+            classes.append(class_id)
+    return classes
 
 def normalize_fixations(fixations: List[Tuple[float, float]], width: int, height: int) -> List[Tuple[float, float]]:
     """
@@ -160,7 +214,7 @@ def predict_fixation(model: deepgaze_pytorch.DeepGazeIII, image_tensor: torch.Te
 
     return next_x, next_y
 
-def generate_retina_warps(image: np.ndarray, num_fixations: int, model: deepgaze_pytorch.DeepGazeIII) -> Tuple[np.ndarray, List[np.ndarray], List[float], List[float]]:
+def generate_retina_warps(image: np.ndarray, num_fixations: int, model: deepgaze_pytorch.DeepGazeIII) -> Tuple[np.ndarray, List[np.ndarray], List[float], List[float], List[List[int]]]:
     """
     Generate retina warps for the given image.
 
@@ -171,7 +225,7 @@ def generate_retina_warps(image: np.ndarray, num_fixations: int, model: deepgaze
 
     Returns:
         Tuple containing the original image, list of retina warps, list of x-coordinates of fixation history,
-        and list of y-coordinates of fixation history.
+        list of y-coordinates of fixation history, and list of classes at each fixation point.
     """
     height, width = image.shape[:2]
     centerbias = rescale_centerbias(centerbias_template, height, width)
@@ -196,12 +250,16 @@ def generate_retina_warps(image: np.ndarray, num_fixations: int, model: deepgaze
                                        retina_size=RETINA_SIZE)
 
     retina_warps = []
+    classes_at_fixations = []
+
+    bounding_boxes = get_bounding_boxes(image)
 
     if INCLUDE_INITIAL_FIXATION:
         # Initial fixation at the center point (0, 0)
         initial_fixation = torch.tensor([[0.0, 0.0]]).to(DEVICE)
         initial_retina_img = foveal_transform(image_tensor.float(), initial_fixation)[0].permute(1, 2, 0).cpu().numpy()
         retina_warps.append(initial_retina_img)
+        classes_at_fixations.append(get_classes_at_coordinate(width // 2, height // 2, bounding_boxes))
 
     for _ in range(num_fixations - 1):
         x_hist = get_fixation_history(fixation_history_x, model)
@@ -222,28 +280,31 @@ def generate_retina_warps(image: np.ndarray, num_fixations: int, model: deepgaze
         retina_img = foveal_transform(image_tensor.float(), fixations)[0].permute(1, 2, 0).cpu().numpy()
 
         retina_warps.append(retina_img)
+        classes_at_fixations.append(get_classes_at_coordinate(next_x, next_y, bounding_boxes))
 
-    return image, retina_warps, fixation_history_x, fixation_history_y
+    return image, retina_warps, fixation_history_x, fixation_history_y, classes_at_fixations
 
 def save_to_h5(original_image: np.ndarray, retina_warps: List[np.ndarray], fixation_history_x: List[float],
-               fixation_history_y: List[float], output_path: str, file_name: str) -> None:
+               fixation_history_y: List[float], classes_at_fixations: List[List[int]], output_path: str, file_name: str) -> None:
     """
-    Save the original image, retina warps, and fixation history to an HDF5 file.
+    Save the original image, retina warps, fixation history, and classes at fixations to an HDF5 file.
 
     Args:
         original_image: Original input image.
         retina_warps: List of retina warp images.
         fixation_history_x: List of x-coordinates of fixation history.
         fixation_history_y: List of y-coordinates of fixation history.
+        classes_at_fixations: List of classes at each fixation point.
         output_path: Path to the output HDF5 file.
         file_name: Name of the file.
     """
-    with h5py.File(output_path, 'a') as f:  # 'a' mode for appending data
+    with h5py.File(output_path, 'a') as f:
         grp = f.create_group(file_name)
         grp.create_dataset('original_image', data=original_image)
         grp.create_dataset('retina_warps', data=np.array(retina_warps))
         grp.create_dataset('fixation_history_x', data=np.array(fixation_history_x))
         grp.create_dataset('fixation_history_y', data=np.array(fixation_history_y))
+        grp.create_dataset('classes_at_fixations', data=np.array(classes_at_fixations, dtype=object))
         grp.attrs['file_name'] = file_name
 
 def process_image(img_path: str, num_fixations: int, model: deepgaze_pytorch.DeepGazeIII) -> None:
@@ -263,11 +324,11 @@ def process_image(img_path: str, num_fixations: int, model: deepgaze_pytorch.Dee
 
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    original_image, retina_warps, fixation_history_x, fixation_history_y = generate_retina_warps(image, num_fixations, model)
+    original_image, retina_warps, fixation_history_x, fixation_history_y, classes_at_fixations = generate_retina_warps(image, num_fixations, model)
 
     output_path = os.path.join(OUTPUT_DIR, OUTPUT_FILE)
     file_name = os.path.basename(img_path)
-    save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, output_path, file_name)
+    save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, classes_at_fixations, output_path, file_name)
 
 def save_processed_files(processed_files: Set[str], processed_files_file: str) -> None:
     """

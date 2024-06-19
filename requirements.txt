@@ -11,3 +11,4 @@ git+https://github.com/peterkeffer/retinawarp.git
 pysaliency
 h5py
 tqdm
+ultralytics
