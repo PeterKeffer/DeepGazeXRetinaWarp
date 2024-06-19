@@ -60,12 +60,15 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Initialize the DeepGaze model
+logger.info("Loading DeepGaze model...")
 model = deepgaze_pytorch.DeepGazeIII(pretrained=True).to(DEVICE)
 
 # Load the centerbias log density
+logger.info(f"Loading centerbias template from {CENTERBIAS_FILE}")
 centerbias_template = np.load(CENTERBIAS_FILE)
 
 # Load the MS COCO dataset
+logger.info("Loading MS COCO dataset...")
 coco_train = COCO(os.path.join('/share/klab/datasets/avs/input/annotations', 'instances_train2017.json'))
 coco_val = COCO(os.path.join('/share/klab/datasets/avs/input/annotations', 'instances_val2017.json'))
 
