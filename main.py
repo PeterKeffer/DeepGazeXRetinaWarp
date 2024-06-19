@@ -379,6 +379,7 @@ def main() -> None:
     for img_file in tqdm(img_files, desc="Processing images"):
         if img_file in processed_files:
             continue
+        logger.info(f"Processing image: {img_file}")
         img_path = os.path.join(COCO_DATASET_DIR, img_file)
         process_image(img_path, NUM_FIXATIONS_TRAIN, model)
         processed_files.add(img_file)
