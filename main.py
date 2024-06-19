@@ -11,6 +11,9 @@ import deepgaze_pytorch
 from deepgaze_pytorch.modules import encode_scanpath_features
 import collections
 from collections.abc import Sequence, MutableMapping
+collections.Sequence = Sequence
+collections.MutableMapping = MutableMapping
+
 import pysaliency.models
 from pysaliency.models import sample_from_logdensity
 import h5py
