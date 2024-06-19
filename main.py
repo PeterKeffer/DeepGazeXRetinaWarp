@@ -26,6 +26,8 @@ from typing import List, Tuple, Set
 # YOLO-specific imports
 from ultralytics import YOLO
 
+
+
 # Constants
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 FOVEA_SIZE = 0.1  # Fovea size as a fraction of image size
@@ -53,6 +55,10 @@ np.random.seed(RANDOM_SEED)
 torch.manual_seed(RANDOM_SEED)
 torch.cuda.manual_seed(RANDOM_SEED)
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 # Initialize the DeepGaze model
 model = deepgaze_pytorch.DeepGazeIII(pretrained=True).to(DEVICE)
 
@@ -63,13 +69,11 @@ centerbias_template = np.load(CENTERBIAS_FILE)
 coco_train = COCO(os.path.join('/share/klab/datasets/avs/input/annotations', 'instances_train2017.json'))
 coco_val = COCO(os.path.join('/share/klab/datasets/avs/input/annotations', 'instances_val2017.json'))
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
 # YOLO-specific initialization
 if not os.path.exists(YOLO_WEIGHTS_FILE):
+    logger.info(f"Downloading YOLOv8 weights from {YOLO_WEIGHTS_URL}")
     torch.hub.download_url_to_file(YOLO_WEIGHTS_URL, YOLO_WEIGHTS_FILE)
+logger.info(f"Loading YOLOv8 model from {YOLO_WEIGHTS_FILE}")
 yolo_model = YOLO(YOLO_WEIGHTS_FILE)
 yolo_model.to(DEVICE).eval()
 
