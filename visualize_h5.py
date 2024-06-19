@@ -8,12 +8,16 @@ import argparse
 
 
 def unnormalize_fixations(fixations, width, height):
-    unnormalized_fixations = []
-    for x, y in fixations:
-        unnormalized_x = (x * (width / 2)) + (width / 2)
-        unnormalized_y = (y * (height / 2)) + (height / 2)
-        unnormalized_fixations.append((unnormalized_x, unnormalized_y))
-    return unnormalized_fixations
+  unnormalized_fixations = []
+  print("FIXATIONS", fixations)
+  for x, y in fixations:
+    # Cast width and height to float for precise division
+    unnormalized_x = (x * (width / 2.0)) + (width / 2.0)
+    unnormalized_y = (y * (height / 2.0)) + (height / 2.0)
+    unnormalized_fixations.append((unnormalized_x, unnormalized_y))
+  print("UNNORMALIZED", unnormalized_fixations)
+  return unnormalized_fixations
+
 
 
 def visualize_h5_data(h5_file, img_id, output_dir=None, plot=False, save_format='jpg'):
@@ -72,6 +76,7 @@ def visualize_h5_data(h5_file, img_id, output_dir=None, plot=False, save_format=
             # Save the original image with fixations and connected lines
             original_image_with_fixations = original_image.copy()
             for i, (x, y) in enumerate(fixation_history):
+                print("ORIGN", fixation_history)
                 color = (255, 165, 0) if i == 0 else (255, 0, 0)  # Orange for the first fixation, red for others
                 size = 10 if i == 0 else 5  # Larger size for the first fixation
                 cv2.circle(original_image_with_fixations, (int(x), int(y)), size, color, -1)
