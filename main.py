@@ -78,7 +78,7 @@ if not os.path.exists(YOLO_WEIGHTS_FILE):
     torch.hub.download_url_to_file(YOLO_WEIGHTS_URL, YOLO_WEIGHTS_FILE)
 logger.info(f"Loading YOLOv8 model from {YOLO_WEIGHTS_FILE}")
 yolo_model = YOLO(YOLO_WEIGHTS_FILE)
-yolo_model.to(DEVICE).eval()
+# yolo_model.to(DEVICE).eval()
 
 def get_bounding_boxes(image: np.ndarray) -> List[Tuple[float, float, float, float, int]]:
     """
