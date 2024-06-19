@@ -311,7 +311,14 @@ def save_to_h5(original_image: np.ndarray, retina_warps: List[np.ndarray], fixat
         grp.create_dataset('retina_warps', data=np.array(retina_warps))
         grp.create_dataset('fixation_history_x', data=np.array(fixation_history_x))
         grp.create_dataset('fixation_history_y', data=np.array(fixation_history_y))
-        grp.create_dataset('classes_at_fixations', data=classes_at_fixations)
+
+        # Convert classes_at_fixations to a 2D numpy array of integers
+        max_classes = len(yolo_model.names)
+        padded_classes = np.zeros((len(classes_at_fixations), max_classes), dtype=int)
+        for i, classes in enumerate(classes_at_fixations):
+            padded_classes[i, classes] = 1
+        grp.create_dataset('classes_at_fixations', data=padded_classes)
+
         grp.attrs['file_name'] = file_name
 
 def process_image(img_path: str, num_fixations: int, model: deepgaze_pytorch.DeepGazeIII) -> None:
