@@ -14,6 +14,7 @@ import collections
 from collections.abc import Sequence, MutableMapping
 collections.Sequence = Sequence
 collections.MutableMapping = MutableMapping
+from sklearn.preprocessing import OneHotEncoder
 
 import pysaliency.models
 from pysaliency.models import sample_from_logdensity
@@ -300,24 +301,8 @@ def generate_retina_warps(image: np.ndarray, num_fixations: int, model: deepgaze
     return image, retina_warps, fixation_history_x, fixation_history_y, classes_at_fixations, confidences_at_fixations
 
 
-def save_to_h5(original_image: np.ndarray, retina_warps: List[np.ndarray], fixation_history_x: List[float],
-               fixation_history_y: List[float], classes_at_fixations: List[List[int]],
-               confidences_at_fixations: List[List[float]], output_path: str, file_name: str) -> None:
-    """
-    Save the original image, retina warps, fixation history, classes at fixations, and confidences to an HDF5 file.
-
-    Args:
-        original_image: Original input image.
-        retina_warps: List of retina warp images.
-        fixation_history_x: List of x-coordinates of fixation history.
-        fixation_history_y: List of y-coordinates of fixation history.
-        classes_at_fixations: List of lists of class IDs at each fixation point.
-        confidences_at_fixations: List of lists of confidence scores at each fixation point.
-        output_path: Path to the output HDF5 file.
-        file_name: Name of the file.
-    """
+def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, classes_at_fixations, confidences_at_fixations, output_path, file_name):
     with h5py.File(output_path, 'a') as f:
-        # Check if the group already exists, if so, delete it
         if file_name in f:
             del f[file_name]
 
@@ -327,19 +312,36 @@ def save_to_h5(original_image: np.ndarray, retina_warps: List[np.ndarray], fixat
         grp.create_dataset('fixation_history_x', data=np.array(fixation_history_x))
         grp.create_dataset('fixation_history_y', data=np.array(fixation_history_y))
 
-        # Store classes and confidences as variable-length arrays
-        classes_dtype = h5py.special_dtype(vlen=np.dtype('int32'))
-        confidences_dtype = h5py.special_dtype(vlen=np.dtype('float32'))
+        # One-hot encode classes
+        all_classes = np.unique([cls for fixation_classes in classes_at_fixations for cls in fixation_classes])
+        encoder = OneHotEncoder(sparse=False)
+        encoder.fit(all_classes.reshape(-1, 1))
 
-        # Ensure each element is a list, even if it's a single integer
-        classes_data = np.array([np.array([x] if isinstance(x, int) else x, dtype=np.int32) for x in classes_at_fixations], dtype=object)
-        confidences_data = np.array([np.array([x] if isinstance(x, (int, float)) else x, dtype=np.float32) for x in confidences_at_fixations], dtype=object)
+        one_hot_classes = [encoder.transform(np.array(fixation_classes).reshape(-1, 1)).sum(axis=0)
+                           for fixation_classes in classes_at_fixations]
+        grp.create_dataset('classes_at_fixations', data=np.array(one_hot_classes))
 
-        grp.create_dataset('classes_at_fixations', data=classes_data, dtype=classes_dtype)
-        grp.create_dataset('confidences_at_fixations', data=confidences_data, dtype=confidences_dtype)
+
+        # Create a structured dtype for classes and confidences
+        max_objects = max(len(classes) for classes in classes_at_fixations)
+        dtype = np.dtype([('class', 'i4'), ('confidence', 'f4')])
+
+        # Create a structured array to store classes and confidences
+        classes_confidences = np.full((len(classes_at_fixations), max_objects),
+                                      fill_value=(0, 0.0), dtype=dtype)
+
+        for i, (classes, confidences) in enumerate(zip(classes_at_fixations, confidences_at_fixations)):
+            for j, (cls, conf) in enumerate(zip(classes, confidences)):
+                classes_confidences[i][j] = (cls, conf)
+
+        grp.create_dataset('classes_confidences', data=classes_confidences)
+
+        # Get all unique classes
+        all_classes = yolo_model.names
+        # Store class labels
+        grp.create_dataset('class_labels', data=np.array(all_classes, dtype=h5py.special_dtype(vlen=str)))
 
         grp.attrs['file_name'] = file_name
-
 
 def process_image(img_path: str, num_fixations: int, model: deepgaze_pytorch.DeepGazeIII) -> None:
     """
