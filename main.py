@@ -305,11 +305,8 @@ import numpy as np
 import h5py
 
 
-def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, classes_at_fixations, confidences_at_fixations, output_path, file_name, yolo_model):
+def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, classes_at_fixations, confidences_at_fixations, output_path, file_name):
     with h5py.File(output_path, 'a') as f:
-        if file_name in f:
-            del f[file_name]
-
         grp = f.create_group(file_name)
         grp.create_dataset('original_image', data=original_image)
         grp.create_dataset('retina_warps', data=np.array(retina_warps))
