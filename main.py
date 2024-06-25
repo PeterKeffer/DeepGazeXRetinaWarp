@@ -330,10 +330,13 @@ def save_to_h5(original_image: np.ndarray, retina_warps: List[np.ndarray], fixat
             padded_classes[i, classes] = 1
         grp.create_dataset('classes_at_fixations', data=padded_classes)
 
-        # Store confidences as a ragged array
+        # Store confidences as a list of variable-length arrays
+        dt = h5py.special_dtype(vlen=np.dtype('float32'))
         confidences_dataset = grp.create_dataset('confidences_at_fixations',
-                                                 data=np.array(confidences_at_fixations, dtype=object),
-                                                 dtype=h5py.vlen_dtype(np.float32))
+                                                 shape=(len(confidences_at_fixations),),
+                                                 dtype=dt)
+        for i, confidences in enumerate(confidences_at_fixations):
+            confidences_dataset[i] = np.array(confidences, dtype='float32')
 
         grp.attrs['file_name'] = file_name
 
