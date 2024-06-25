@@ -331,8 +331,11 @@ def save_to_h5(original_image: np.ndarray, retina_warps: List[np.ndarray], fixat
         classes_dtype = h5py.special_dtype(vlen=np.dtype('int32'))
         confidences_dtype = h5py.special_dtype(vlen=np.dtype('float32'))
 
-        grp.create_dataset('classes_at_fixations', data=classes_at_fixations, dtype=classes_dtype)
-        grp.create_dataset('confidences_at_fixations', data=confidences_at_fixations, dtype=confidences_dtype)
+        classes_data = np.array([np.array(x, dtype=np.int32) for x in classes_at_fixations], dtype=object)
+        confidences_data = np.array([np.array(x, dtype=np.float32) for x in confidences_at_fixations], dtype=object)
+
+        grp.create_dataset('classes_at_fixations', data=classes_data, dtype=classes_dtype)
+        grp.create_dataset('confidences_at_fixations', data=confidences_data, dtype=confidences_dtype)
 
         grp.attrs['file_name'] = file_name
 
