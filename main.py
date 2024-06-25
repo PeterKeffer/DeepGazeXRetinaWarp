@@ -311,32 +311,28 @@ def save_to_h5(original_image: np.ndarray, retina_warps: List[np.ndarray], fixat
         retina_warps: List of retina warp images.
         fixation_history_x: List of x-coordinates of fixation history.
         fixation_history_y: List of y-coordinates of fixation history.
-        classes_at_fixations: List of classes at each fixation point.
-        confidences_at_fixations: List of confidence scores at each fixation point.
+        classes_at_fixations: List of lists of class IDs at each fixation point.
+        confidences_at_fixations: List of lists of confidence scores at each fixation point.
         output_path: Path to the output HDF5 file.
         file_name: Name of the file.
     """
     with h5py.File(output_path, 'a') as f:
+        # Check if the group already exists, if so, delete it
+        if file_name in f:
+            del f[file_name]
+
         grp = f.create_group(file_name)
         grp.create_dataset('original_image', data=original_image)
         grp.create_dataset('retina_warps', data=np.array(retina_warps))
         grp.create_dataset('fixation_history_x', data=np.array(fixation_history_x))
         grp.create_dataset('fixation_history_y', data=np.array(fixation_history_y))
 
-        # Convert classes_at_fixations to a 2D numpy array of integers (one-hot encoding)
-        max_classes = len(yolo_model.names)
-        padded_classes = np.zeros((len(classes_at_fixations), max_classes), dtype=int)
-        for i, classes in enumerate(classes_at_fixations):
-            padded_classes[i, classes] = 1
-        grp.create_dataset('classes_at_fixations', data=padded_classes)
+        # Store classes and confidences as variable-length arrays
+        classes_dtype = h5py.special_dtype(vlen=np.dtype('int32'))
+        confidences_dtype = h5py.special_dtype(vlen=np.dtype('float32'))
 
-        # Store confidences as a list of variable-length arrays
-        dt = h5py.special_dtype(vlen=np.dtype('float32'))
-        confidences_dataset = grp.create_dataset('confidences_at_fixations',
-                                                 shape=(len(confidences_at_fixations),),
-                                                 dtype=dt)
-        for i, confidences in enumerate(confidences_at_fixations):
-            confidences_dataset[i] = np.array(confidences, dtype='float32')
+        grp.create_dataset('classes_at_fixations', data=classes_at_fixations, dtype=classes_dtype)
+        grp.create_dataset('confidences_at_fixations', data=confidences_at_fixations, dtype=confidences_dtype)
 
         grp.attrs['file_name'] = file_name
 
