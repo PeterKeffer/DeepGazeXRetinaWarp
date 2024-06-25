@@ -340,6 +340,7 @@ def save_to_h5(original_image: np.ndarray, retina_warps: List[np.ndarray], fixat
 
         grp.attrs['file_name'] = file_name
 
+
 def process_image(img_path: str, num_fixations: int, model: deepgaze_pytorch.DeepGazeIII) -> None:
     """
     Process a single image by generating retina warps and saving the results.
