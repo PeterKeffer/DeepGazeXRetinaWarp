@@ -301,8 +301,14 @@ def generate_retina_warps(image: np.ndarray, num_fixations: int, model: deepgaze
     return image, retina_warps, fixation_history_x, fixation_history_y, classes_at_fixations, confidences_at_fixations
 
 
-def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, classes_at_fixations, confidences_at_fixations, output_path, file_name):
+import numpy as np
+import h5py
+
+
+def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, classes_at_fixations, confidences_at_fixations, output_path, file_name, yolo_model):
     with h5py.File(output_path, 'a') as f:
+        if file_name in f:
+            del f[file_name]
 
         grp = f.create_group(file_name)
         grp.create_dataset('original_image', data=original_image)
@@ -327,12 +333,12 @@ def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_histor
         dtype = np.dtype([('class', 'i4'), ('confidence', 'f4')])
 
         # Create a structured array to store classes and confidences
-        classes_confidences = np.full((len(classes_at_fixations), max_objects),
-                                      fill_value=(0, 0.0), dtype=dtype)
+        classes_confidences = np.zeros((len(classes_at_fixations), max_objects), dtype=dtype)
 
         for i, (classes, confidences) in enumerate(zip(classes_at_fixations, confidences_at_fixations)):
             for j, (cls, conf) in enumerate(zip(classes, confidences)):
-                classes_confidences[i][j] = (cls, conf)
+                if j < max_objects:
+                    classes_confidences[i][j] = (cls, conf)
 
         grp.create_dataset('classes_confidences', data=classes_confidences)
 
