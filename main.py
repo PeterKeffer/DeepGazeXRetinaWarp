@@ -303,8 +303,6 @@ def generate_retina_warps(image: np.ndarray, num_fixations: int, model: deepgaze
 
 def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_history_y, classes_at_fixations, confidences_at_fixations, output_path, file_name):
     with h5py.File(output_path, 'a') as f:
-        if file_name in f:
-            del f[file_name]
 
         grp = f.create_group(file_name)
         grp.create_dataset('original_image', data=original_image)
@@ -312,15 +310,17 @@ def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_histor
         grp.create_dataset('fixation_history_x', data=np.array(fixation_history_x))
         grp.create_dataset('fixation_history_y', data=np.array(fixation_history_y))
 
+        # Get all unique classes from YOLO model
+        all_classes = yolo_model.names
+
         # One-hot encode classes
-        all_classes = np.unique([cls for fixation_classes in classes_at_fixations for cls in fixation_classes])
-        encoder = OneHotEncoder()
-        encoder.fit(all_classes.reshape(-1, 1))
+        num_classes = len(all_classes)
+        one_hot_classes = np.zeros((len(classes_at_fixations), num_classes), dtype=np.int8)
+        for i, fixation_classes in enumerate(classes_at_fixations):
+            for cls in fixation_classes:
+                one_hot_classes[i, cls] = 1
 
-        one_hot_classes = [encoder.transform(np.array(fixation_classes).reshape(-1, 1)).sum(axis=0)
-                           for fixation_classes in classes_at_fixations]
-        grp.create_dataset('classes_at_fixations', data=np.array(one_hot_classes))
-
+        grp.create_dataset('classes_at_fixations', data=one_hot_classes)
 
         # Create a structured dtype for classes and confidences
         max_objects = max(len(classes) for classes in classes_at_fixations)
@@ -336,8 +336,6 @@ def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_histor
 
         grp.create_dataset('classes_confidences', data=classes_confidences)
 
-        # Get all unique classes
-        all_classes = yolo_model.names
         # Store class labels
         grp.create_dataset('class_labels', data=np.array(all_classes, dtype=h5py.special_dtype(vlen=str)))
 
