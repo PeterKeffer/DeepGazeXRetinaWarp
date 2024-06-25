@@ -314,7 +314,7 @@ def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_histor
 
         # One-hot encode classes
         all_classes = np.unique([cls for fixation_classes in classes_at_fixations for cls in fixation_classes])
-        encoder = OneHotEncoder(sparse=False)
+        encoder = OneHotEncoder()
         encoder.fit(all_classes.reshape(-1, 1))
 
         one_hot_classes = [encoder.transform(np.array(fixation_classes).reshape(-1, 1)).sum(axis=0)
