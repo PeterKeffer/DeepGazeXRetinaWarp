@@ -80,7 +80,7 @@ logger.info(f"Loading YOLOv8 model from {YOLO_WEIGHTS_FILE}")
 yolo_model = YOLO(YOLO_WEIGHTS_FILE)
 # yolo_model.to(DEVICE).eval()
 
-def get_bounding_boxes(image: np.ndarray) -> List[Tuple[float, float, float, float, int]]:
+def get_bounding_boxes(image: np.ndarray) -> List[Tuple[float, float, float, float, int, float]]:
     """
     Get the bounding boxes of objects in the image using YOLOv8.
 
@@ -88,35 +88,36 @@ def get_bounding_boxes(image: np.ndarray) -> List[Tuple[float, float, float, flo
         image: Input image.
 
     Returns:
-        List of bounding boxes, each represented as (x1, y1, x2, y2, class_id).
+        List of bounding boxes, each represented as (x1, y1, x2, y2, class_id, confidence).
     """
     results = yolo_model(image)
     bounding_boxes = []
     for result in results:
         boxes = result.boxes.xyxy.cpu().numpy()
         classes = result.boxes.cls.cpu().numpy().astype(int)
-        for box, cls in zip(boxes, classes):
+        confidences = result.boxes.conf.cpu().numpy()
+        for box, cls, conf in zip(boxes, classes, confidences):
             x1, y1, x2, y2 = map(int, box)
-            bounding_boxes.append((x1, y1, x2, y2, cls))
+            bounding_boxes.append((x1, y1, x2, y2, cls, conf))
     return bounding_boxes
 
-def get_classes_at_coordinate(x: float, y: float, bounding_boxes: List[Tuple[float, float, float, float, int]]) -> List[int]:
+def get_classes_at_coordinate(x: float, y: float, bounding_boxes: List[Tuple[float, float, float, float, int, float]]) -> List[Tuple[int, float]]:
     """
-    Get the classes of the bounding boxes that contain the given coordinate.
+    Get the classes and confidence scores of the bounding boxes that contain the given coordinate.
 
     Args:
         x: x-coordinate.
         y: y-coordinate.
-        bounding_boxes: List of bounding boxes, each represented as (x1, y1, x2, y2, class_id).
+        bounding_boxes: List of bounding boxes, each represented as (x1, y1, x2, y2, class_id, confidence).
 
     Returns:
-        List of class IDs of the bounding boxes that contain the given coordinate.
+        List of tuples (class_id, confidence) of the bounding boxes that contain the given coordinate.
     """
-    classes = []
-    for x1, y1, x2, y2, class_id in bounding_boxes:
+    classes_and_confidences = []
+    for x1, y1, x2, y2, class_id, confidence in bounding_boxes:
         if x1 <= x <= x2 and y1 <= y <= y2:
-            classes.append(class_id)
-    return classes
+            classes_and_confidences.append((class_id, confidence))
+    return classes_and_confidences
 
 def normalize_fixations(fixations: List[Tuple[float, float]], width: int, height: int) -> List[Tuple[float, float]]:
     """
@@ -257,16 +258,18 @@ def generate_retina_warps(image: np.ndarray, num_fixations: int, model: deepgaze
                                        retina_size=RETINA_SIZE)
 
     retina_warps = []
-    classes_at_fixations = []
 
     bounding_boxes = get_bounding_boxes(image)
+
+    classes_and_confidences_at_fixations = []
 
     if INCLUDE_INITIAL_FIXATION:
         # Initial fixation at the center point (0, 0)
         initial_fixation = torch.tensor([[0.0, 0.0]]).to(DEVICE)
         initial_retina_img = foveal_transform(image_tensor.float(), initial_fixation)[0].permute(1, 2, 0).cpu().numpy()
         retina_warps.append(initial_retina_img)
-        classes_at_fixations.append(get_classes_at_coordinate(width // 2, height // 2, bounding_boxes))
+        classes_and_confidences_at_fixations.append(get_classes_at_coordinate(width // 2, height // 2, bounding_boxes))
+
 
     for _ in range(num_fixations - 1):
         x_hist = get_fixation_history(fixation_history_x, model)
@@ -287,21 +290,23 @@ def generate_retina_warps(image: np.ndarray, num_fixations: int, model: deepgaze
         retina_img = foveal_transform(image_tensor.float(), fixations)[0].permute(1, 2, 0).cpu().numpy()
 
         retina_warps.append(retina_img)
-        classes_at_fixations.append(get_classes_at_coordinate(next_x, next_y, bounding_boxes))
 
-    return image, retina_warps, fixation_history_x, fixation_history_y, classes_at_fixations
+        classes_and_confidences_at_fixations.append(get_classes_at_coordinate(next_x, next_y, bounding_boxes))
+
+    return image, retina_warps, fixation_history_x, fixation_history_y, classes_and_confidences_at_fixations
+
 
 def save_to_h5(original_image: np.ndarray, retina_warps: List[np.ndarray], fixation_history_x: List[float],
-               fixation_history_y: List[float], classes_at_fixations: List[List[int]], output_path: str, file_name: str) -> None:
+               fixation_history_y: List[float], classes_and_confidences_at_fixations: List[List[Tuple[int, float]]], output_path: str, file_name: str) -> None:
     """
-    Save the original image, retina warps, fixation history, and classes at fixations to an HDF5 file.
+    Save the original image, retina warps, fixation history, and classes with confidences at fixations to an HDF5 file.
 
     Args:
         original_image: Original input image.
         retina_warps: List of retina warp images.
         fixation_history_x: List of x-coordinates of fixation history.
         fixation_history_y: List of y-coordinates of fixation history.
-        classes_at_fixations: List of classes at each fixation point.
+        classes_and_confidences_at_fixations: List of classes and confidences at each fixation point.
         output_path: Path to the output HDF5 file.
         file_name: Name of the file.
     """
@@ -312,12 +317,19 @@ def save_to_h5(original_image: np.ndarray, retina_warps: List[np.ndarray], fixat
         grp.create_dataset('fixation_history_x', data=np.array(fixation_history_x))
         grp.create_dataset('fixation_history_y', data=np.array(fixation_history_y))
 
-        # Convert classes_at_fixations to a 2D numpy array of integers
+        # Convert classes_and_confidences_at_fixations to two 2D numpy arrays
         max_classes = len(yolo_model.names)
-        padded_classes = np.zeros((len(classes_at_fixations), max_classes), dtype=int)
-        for i, classes in enumerate(classes_at_fixations):
-            padded_classes[i, classes] = 1
+        max_detections = max(len(fixation) for fixation in classes_and_confidences_at_fixations)
+        padded_classes = np.zeros((len(classes_and_confidences_at_fixations), max_detections), dtype=int)
+        padded_confidences = np.zeros((len(classes_and_confidences_at_fixations), max_detections), dtype=float)
+
+        for i, fixation in enumerate(classes_and_confidences_at_fixations):
+            for j, (class_id, confidence) in enumerate(fixation):
+                padded_classes[i, j] = class_id
+                padded_confidences[i, j] = confidence
+
         grp.create_dataset('classes_at_fixations', data=padded_classes)
+        grp.create_dataset('confidences_at_fixations', data=padded_confidences)
 
         grp.attrs['file_name'] = file_name
 
