@@ -323,7 +323,7 @@ def save_to_h5(original_image, retina_warps, fixation_history_x, fixation_histor
         grp.create_dataset('classes_at_fixations', data=one_hot_classes)
 
         # Create a structured dtype for classes and confidences
-        max_objects = max(len(classes) for classes in classes_at_fixations)
+        max_objects = 10
         dtype = np.dtype([('class', 'i4'), ('confidence', 'f4')])
 
         # Create a structured array to store classes and confidences
